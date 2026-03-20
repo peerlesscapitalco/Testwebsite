@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  role          String    @default("donor") // donor, charity_admin, admin
+  phone         String?
+  avatar        String?
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  donations     Donation[]
+  organization  Organization? @relation("OrgAdmin")
+  orgMemberId   String?
+  memberOrg     Organization? @relation("OrgMembers", fields: [orgMemberId], references: [id])
+}
+
+model Organization {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  mission         String
+  ein             String?  @unique // Tax ID
+  website         String?
+  phone           String?
+  email           String
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  logo            String?
+  coverImage      String?
+  status          String   @default("pending") // pending, verified, rejected, suspended
+  verifiedAt      DateTime?
+  rejectionReason String?
+  totalReceived   Float    @default(0)
+  totalSpent      Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  adminId         String   @unique
+  admin           User     @relation("OrgAdmin", fields: [adminId], references: [id])
+  members         User[]   @relation("OrgMembers")
+  causes          Cause[]
+  spendingReports SpendingReport[]
+}
+
+model Cause {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  category        String   // shelter, legal_aid, counseling, emergency, education, children, healthcare
+  goalAmount      Float
+  raisedAmount    Float    @default(0)
+  status          String   @default("pending") // pending, approved, active, funded, completed, rejected
+  approvedAt      DateTime?
+  rejectionReason String?
+  startDate       DateTime?
+  endDate         DateTime?
+  image           String?
+  impactMetrics   String?  // JSON string for impact data
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  donations       Donation[]
+  spendingReports SpendingReport[]
+}
+
+model Donation {
+  id              String   @id @default(cuid())
+  amount          Float
+  status          String   @default("completed") // pending, completed, refunded
+  paymentMethod   String?  // card, bank_transfer, crypto
+  transactionId   String?
+  isAnonymous     Boolean  @default(false)
+  message         String?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  donorId         String
+  donor           User     @relation(fields: [donorId], references: [id])
+  causeId         String
+  cause           Cause    @relation(fields: [causeId], references: [id])
+}
+
+model SpendingReport {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  amount          Float
+  category        String   // personnel, supplies, services, facilities, transportation, other
+  receiptUrl      String?
+  status          String   @default("pending") // pending, approved, flagged
+  reportDate      DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  causeId         String
+  cause           Cause    @relation(fields: [causeId], references: [id])
+}
